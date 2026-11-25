@@ -1,26 +1,57 @@
 /**
  * dsh-image-search — 以图搜图。
- * 引擎：Google Lens（可选 Key，通用最强）＋ AnimeTrace（二次元角色）＋ trace.moe（番剧出处）＋ 百度识图（兜底）。
- * 出处页：AniList 作品/角色页 + Lens/百度识图返回的来源页。
+ * 引擎：Google Lens（可选 Key）＋ AnimeTrace（二次元角色）＋ trace.moe（番剧出处）。
+ * 出处页：AniList 作品/角色页 + Lens 返回的来源页。
  */
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { createCache } from './lib/cache.js'
 import { loadImage, DEFAULT_UA } from './lib/image.js'
 import { queryAnimeTrace } from './lib/animetrace.js'
 import { queryTraceMoe } from './lib/tracemoe.js'
 import { queryGoogleLens } from './lib/serpapi.js'
 import { lookupAnime, lookupCharacter } from './lib/anilist.js'
-import { createBaiduRunner } from './lib/baidu.js'
+import { loadSchemastery } from './lib/config-schema.js'
 import { compressForUpload } from './lib/compress.js'
 
 const TOOL_NAME = 'image_search'
-const ENGINES = ['animetrace', 'tracemoe', 'lens', 'baidu']
+const ENGINES = ['animetrace', 'tracemoe', 'lens']
+
+/** 可选：包目录内不入库的本地扩展引擎（lib/engines.local.cjs），没有就只用内置引擎。 */
+const requireLocal = createRequire(import.meta.url)
+let localEngines = []
+try {
+  const mod = requireLocal('./lib/engines.local.cjs')
+  const list = Array.isArray(mod) ? mod : Array.isArray(mod?.default) ? mod.default : []
+  localEngines = list.filter((e) => e && typeof e.name === 'string' && typeof e.run === 'function')
+} catch {
+  /* 没有本地扩展 */
+}
+
+const z = loadSchemastery()
+
+/** 配置 schema；解析不到 schemastery 时退化为「不声明」，配置原样透传。 */
+export const Config = z
+  ? z.object({
+      serpapiKey: z.string().default('').description('Google Lens (SerpApi) 的 API Key，留空则跳过 Lens'),
+      lensPolicy: z.string().default('auto').description('auto=免费引擎认不出才用 Lens；always=每次都先用'),
+      animetraceToken: z.string().default('').description('AnimeTrace 免费 token（可选）'),
+      enableAnimeTrace: z.boolean().default(true).description('是否启用 AnimeTrace'),
+      enableTraceMoe: z.boolean().default(true).description('是否启用 trace.moe'),
+      maxImageBytes: z.number().default(8 * 1024 * 1024).description('图片大小上限（字节）'),
+      serpapiUploadMaxBytes: z.number().default(500000).description('上传 Lens 前的压缩阈值（字节）'),
+      compressMaxDimension: z.number().default(1600).description('压缩后最长边（像素）'),
+      cacheTtlHours: z.number().default(24).description('结果缓存时长（小时）'),
+      timeoutMs: z.number().default(60000).description('单次调用总超时（毫秒）'),
+      engineTimeoutMs: z.number().default(12000).description('单引擎超时（毫秒）'),
+    })
+  : undefined
 
 const DESCRIPTION =
   '以图搜图：给一张图片，反查它是什么角色/什么东西、出自哪部作品或哪一集、以及图片来源页面。' +
   '输入本地绝对路径或 http(s) 图片地址。' +
-  '配置了 Google Lens（serpapiKey）时先走 Lens（通用识别最强，本地图片上传上限约 500KB），否则用 AnimeTrace 认二次元角色、trace.moe 认番剧截图，' +
-  '都认不出时用百度识图兜底。多个引擎并行执行，按画像/意图自动取舍。' +
+  '配置了 Google Lens（serpapiKey）时先走 Lens（通用识别最强，本地图片上传上限约 500KB），否则用 AnimeTrace 认二次元角色、trace.moe 认番剧截图；' +
+  '多个引擎并行执行，按画像/意图自动取舍。' +
   '当用户发来图片问「这是谁/什么角色/哪部番/哪里来的/这个梗是什么」，或你想追溯网页上某张图的来源时使用。' +
   '会把图片字节发送给上述第三方服务（含境外的 SerpApi/AnimeTrace/trace.moe）；免费引擎有每日额度，失败或额度用尽时如实返回原因。'
 
@@ -36,8 +67,8 @@ const PARAMETERS = {
     },
     engine: {
       type: 'string',
-      enum: ['auto', 'lens', 'animetrace', 'tracemoe', 'baidu'],
-      description: '指定单个引擎；auto（默认）并行调度：免费引擎先跑，认不出再上 Lens/百度。',
+      enum: ['auto', 'lens', 'animetrace', 'tracemoe'],
+      description: '指定单个引擎；auto（默认）并行调度：免费引擎先跑，认不出再上 Lens。',
     },
     max_results: { type: 'integer', description: '最多返回多少条候选与出处链接，默认 6。' },
   },
@@ -132,24 +163,6 @@ const OUTPUT_SCHEMA = {
         },
       },
     },
-    baidu: {
-      type: 'object',
-      description: '百度识图兜底结果。',
-      additionalProperties: false,
-      properties: {
-        guess: { type: 'string' },
-        text: { type: 'string' },
-        sources: {
-          type: 'array',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['url'],
-            properties: { title: { type: 'string' }, url: { type: 'string' } },
-          },
-        },
-      },
-    },
     links: {
       type: 'array',
       description: '出处页链接。',
@@ -182,9 +195,7 @@ function normalizeOptions(raw) {
     lensPolicy: c.lensPolicy === 'always' ? 'always' : 'auto',
     enableAnimeTrace: c.enableAnimeTrace !== false,
     enableTraceMoe: c.enableTraceMoe !== false,
-    enableBaiduFallback: c.enableBaiduFallback !== false,
     maxImageBytes: Number.isFinite(c.maxImageBytes) ? c.maxImageBytes : 8 * 1024 * 1024,
-    maxBaiduBytes: Number.isFinite(c.maxBaiduBytes) ? c.maxBaiduBytes : 4 * 1024 * 1024,
     cacheTtlHours: Number.isFinite(c.cacheTtlHours) ? c.cacheTtlHours : 24,
     serpapiUploadMaxBytes: Number.isFinite(c.serpapiUploadMaxBytes) ? c.serpapiUploadMaxBytes : 500000,
     compressMaxDimension: Number.isFinite(c.compressMaxDimension) ? c.compressMaxDimension : 1600,
@@ -248,8 +259,20 @@ function lensHasResult(lens) {
 }
 
 /** 每个引擎返回一个"补丁"，由调用方按固定优先级合并，保证并行结果与顺序无关。 */
-function createEngineRunner({ img, options, maxResults, signal, baidu }) {
+function createEngineRunner({ img, options, maxResults, signal, browser }) {
   return async function runEngine(name) {
+    if (name === 'local') {
+      const results = []
+      for (const engine of localEngines) {
+        try {
+          const out = await engine.run({ img, options, signal, browser, maxResults })
+          results.push({ engine: engine.name, ...(out || {}) })
+        } catch (error) {
+          results.push({ engine: engine.name, error: error?.message || String(error) })
+        }
+      }
+      return { name, patch: { local: results } }
+    }
     if (name === 'lens') {
       // 本地图片超过 SerpApi 上传上限时，先用 sharp 压到上限内（纯 Node，不碰浏览器）
       let uploadImg = img
@@ -305,13 +328,6 @@ function createEngineRunner({ img, options, maxResults, signal, baidu }) {
       })
       return { name, patch: { matches: result.matches, quota: result.quota, quotaUsed: result.quotaUsed } }
     }
-    if (name === 'baidu') {
-      const result = await baidu.query({ img, signal })
-      return {
-        name,
-        patch: { baidu: { guess: result.guess, text: result.text, sources: result.links.slice(0, maxResults) }, reason: result.reason },
-      }
-    }
     throw new Error(`未知引擎：${name}`)
   }
 }
@@ -359,15 +375,25 @@ function mergeEngineResult(value, result, { maxResults }) {
     }
     return
   }
-  if (name === 'baidu') {
-    value.baidu = patch.baidu
-    value.engines.push('baidu')
-    if (result.reason) value.notes.push(result.reason)
+  if (name === 'local') {
+    for (const r of patch.local || []) {
+      if (r.error) {
+        value.notes.push(`${r.engine} 失败：${r.error}`)
+        continue
+      }
+      if (Array.isArray(r.notes)) value.notes.push(...r.notes)
+      if (Array.isArray(r.links)) value.extraLinks.push(...r.links.slice(0, maxResults))
+      if (Array.isArray(r.guesses) && r.guesses.length) {
+        value.guesses = [...(value.guesses || []), ...r.guesses.slice(0, maxResults)]
+      }
+      if (r.confident) value.localConfident = true
+      value.engines.push(r.engine)
+    }
   }
 }
 
 async function enrichSources(value, { signal, options, maxResults }) {
-  const links = []
+  const links = [...(value.extraLinks || [])]
   const guesses = value.guesses || []
   const top = guesses.find((g) => g.confidence === 'high')
   if (top?.name) {
@@ -413,14 +439,6 @@ async function enrichSources(value, { signal, options, maxResults }) {
     pushLink(links, `Lens 网页：${item.title || ''}`.trim(), item.link)
     if (links.length >= maxResults * 2) break
   }
-  for (const source of value.baidu?.sources || []) {
-    pushLink(links, source.title || '百度来源页', source.url)
-    if (links.length >= maxResults * 2) break
-  }
-  if (!links.length) {
-    const query = top?.name ? [top.name, top.work].filter(Boolean).join(' ') : value.baidu?.guess || value.lens?.knowledge_title
-    if (query) pushLink(links, `百度文字搜索：${query}`, `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`)
-  }
   return links.slice(0, maxResults * 2)
 }
 
@@ -447,7 +465,6 @@ function summarize(value) {
     else if (visual) parts.push(`Google Lens 找到 ${visual} 条相似图/来源页（未给出明确命名）`)
     else if (organic) parts.push(`Google Lens 找到 ${organic} 条相关网页`)
   }
-  if (value.baidu?.guess) parts.push(`百度识图认为图中可能是 ${value.baidu.guess}`)
   if (!parts.length) return '未能识别：可换更清晰的整图重试，或改用关键词检索。'
   return parts.join('；')
 }
@@ -492,9 +509,8 @@ export function apply(ctx, config) {
   void cache.prune()
 
   let browser
-  const baidu = createBaiduRunner(() => browser)
   ctx.effect(() => () => {
-    void baidu.dispose()
+    for (const engine of localEngines) void engine.dispose?.()
   })
 
   ctx.inject(['browser'], (bctx) => {
@@ -537,8 +553,8 @@ export function apply(ctx, config) {
         })
 
         const lensKey = options.serpapiKey ? 'lens' : 'nolens'
-        // v2：输出结构变化时递增，避免旧缓存掩盖新逻辑
-        const cacheKey = `v2|${img.sha256.slice(0, 32)}|${intent}|${engine}|${lensKey}`
+        // v3：输出结构变化（移除兜底字段）时递增，避免旧缓存掩盖新逻辑
+        const cacheKey = `v3|${img.sha256.slice(0, 32)}|${intent}|${engine}|${lensKey}`
         const cached = await cache.get(cacheKey)
         if (cached) return { ...cached, cached: true }
 
@@ -549,28 +565,21 @@ export function apply(ctx, config) {
           image_sha256: img.sha256.slice(0, 16),
           engines: [],
           notes: [],
+          extraLinks: [],
+          localConfident: false,
         }
 
-        const runEngine = createEngineRunner({ img, options, maxResults, signal, baidu })
+        const runEngine = createEngineRunner({ img, options, maxResults, signal, browser })
         const enabled = {
           animetrace: options.enableAnimeTrace,
           tracemoe: options.enableTraceMoe,
           lens: Boolean(options.serpapiKey),
-          baidu: options.enableBaiduFallback,
+          local: localEngines.length > 0,
         }
 
         const runWave = async (names) => {
           const usable = names.filter((name) => {
-            if (name === 'baidu') {
-              if (!baidu.available()) {
-                value.notes.push('百度兜底不可用：未检测到浏览器服务')
-                return false
-              }
-              if (img.bytes.length > options.maxBaiduBytes) {
-                value.notes.push(`百度兜底跳过：图片 ${img.bytes.length} 字节超过浏览器上传上限`)
-                return false
-              }
-            }
+            if (name === 'local' && localEngines.length === 0) return false
             if (name === 'lens' && !options.serpapiKey) return false
             return true
           })
@@ -586,7 +595,7 @@ export function apply(ctx, config) {
         }
 
         const mergeAll = (results) => {
-          const ordered = ENGINES.map((name) => results.find((r) => r.name === name)).filter(Boolean)
+          const ordered = [...ENGINES, 'local'].map((name) => results.find((r) => r.name === name)).filter(Boolean)
           for (const result of ordered) mergeEngineResult(value, result, { maxResults })
         }
 
@@ -602,9 +611,9 @@ export function apply(ctx, config) {
           const confident = hasHighGuess || animeStrong
 
           const needLens = Boolean(options.serpapiKey) && (!confident || options.lensPolicy === 'always')
-          const needBaidu = Boolean(options.enableBaiduFallback) && !confident
-          if (needLens || needBaidu) {
-            const secondWave = [needLens ? 'lens' : undefined, needBaidu ? 'baidu' : undefined].filter(Boolean)
+          const needLocal = localEngines.length > 0 && !confident
+          if (needLens || needLocal) {
+            const secondWave = [needLens ? 'lens' : undefined, needLocal ? 'local' : undefined].filter(Boolean)
             const rest = await runWave(secondWave)
             mergeAll(rest)
           }
@@ -612,10 +621,12 @@ export function apply(ctx, config) {
 
         value.links = await enrichSources(value, { signal, options, maxResults })
         const hasHighGuess = (value.guesses || []).some((g) => g.confidence === 'high')
-        value.ok = Boolean(hasHighGuess || value.anime || lensHasResult(value.lens) || value.baidu?.guess)
+        value.ok = Boolean(hasHighGuess || value.anime || lensHasResult(value.lens) || value.localConfident)
         value.message = summarize(value)
-        if (value.ok) await cache.set(cacheKey, value)
-        return value
+        // 内部字段不进入返回值（输出 schema 是 additionalProperties: false）
+        const { extraLinks, localConfident, ...publicValue } = value
+        if (value.ok) await cache.set(cacheKey, publicValue)
+        return publicValue
       } finally {
         composed.dispose()
       }

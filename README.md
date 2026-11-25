@@ -7,9 +7,9 @@
 
 - 工具名：`image_search`
 - 适用：[DeepSeek Harness (DSH)](https://github.com/deepseek-ai) 插件体系
-- 免费优先：**没有 Key 也能用**（AnimeTrace + trace.moe + 百度兜底）
+- 免费优先：**没有 Key 也能用**（AnimeTrace + trace.moe）
 
-> **隐私提示**：使用时会把你给的图片上传到 AnimeTrace / trace.moe / SerpApi / 百度识图。涉密、内部或隐私图片请不要使用云端链路，详见 [SECURITY.md](./SECURITY.md)。
+> **隐私提示**：使用时会把你给的图片上传到 AnimeTrace / trace.moe / SerpApi。涉密、内部或隐私图片请不要使用云端链路，详见 [SECURITY.md](./SECURITY.md)。
 
 ## 目录
 
@@ -57,9 +57,9 @@ image_search({ image: 'D:/素材/a.png' })
 第一波：AnimeTrace ∥ trace.moe        ← 免费、快（约 3~5 秒）
   ↓ 拿到高置信？→ 是，结束
   ↓ 否
-第二波：Google Lens ∥ 百度识图          ← 兜底（Lens 需 Key）
+第二波：Google Lens                    ← 通用兜底（需 Key）
   ↓
-出处页：AniList 角色/作品页 + Lens/百度的来源页
+出处页：AniList 角色/作品页 + Lens 返回的来源页
   ↓
 结构化 JSON + 一句话结论
 ```
@@ -71,7 +71,6 @@ image_search({ image: 'D:/素材/a.png' })
 | Google Lens (SerpApi) | 通用最强：梗图/实物/真人/画师溯源，返回来源页 | 免费 250 次/月 | `serpapiKey` |
 | AnimeTrace | 二次元插画/头像 → 角色名 + 作品名 + 位置框 | 匿名有限，容易 429；注册免费 token 可放宽 | 可选 |
 | trace.moe | 番剧截图 → 番剧 + 集数 + 时间点 + AniList 页面 | 免费 100 次/天 | 不需要 |
-| Baidu 识图 | 兜底：通用图 → 「图中可能是 X」+ 图片来源页 | 免费，走真实浏览器，偶尔需人工过验证 | 不需要 |
 | AniList | 作品/角色出处页 | 免费 | 不需要 |
 
 Lens 的本地图片走两步：`POST /image` 拿 `image_id` → 再查 Lens。图片超过 `serpapiUploadMaxBytes` 时先用 **sharp** 压到上限内（纯 Node，不用浏览器）。
@@ -82,13 +81,13 @@ Lens 的本地图片走两步：`POST /image` 拿 `image_id` → 再查 Lens。�
 |---|---|---|---|
 | `image` | string | 必填 | 本地绝对路径，或 `http(s)` 图片地址 |
 | `intent` | string | `auto` | `auto` 均衡；`character` 只关心角色；`anime` 只关心番剧出处 |
-| `engine` | string | `auto` | `auto` 自动降级；也可强制 `lens` / `animetrace` / `tracemoe` / `baidu` |
+| `engine` | string | `auto` | `auto` 自动降级；也可强制 `lens` / `animetrace` / `tracemoe` |
 | `max_results` | integer | `6` | 最多返回多少条候选与出处链接（1–12） |
 
 ```js
 image_search({ image: 'C:\\Users\\me\\Desktop\\a.png' })
 image_search({ image: 'https://example.com/a.jpg', intent: 'anime' })
-image_search({ image: 'a.png', engine: 'baidu' })
+image_search({ image: 'a.png', engine: 'lens' })
 ```
 
 ## 返回结构
@@ -146,27 +145,29 @@ image_search({ image: 'a.png', engine: 'baidu' })
 }
 ```
 
-前三层都没结论、走百度兜底时（只列出该场景相关的字段）：
+免费引擎都不可靠时（`ok` 为 `false`，候选仍然返回，方便上层自行判断）：
 
 ```json
 {
-  "ok": true,
-  "message": "百度识图认为图中可能是 初音未来",
-  "image_kind": "url",
-  "image_sha256": "85b170d3a2c40e19",
-  "baidu": {
-    "guess": "初音未来",
-    "text": "图中可能是初音未来 相关商品 ... 图片来源 ...",
-    "sources": [
-      { "title": "【MIKU】世界第一公主殿下 初音未来特辑（4） - 哔哩哔哩", "url": "http://www.bilibili.com/read/cv11995807" },
-      { "title": "布洛妮娅゜扎伊切克的动态 - 哔哩哔哩", "url": "http://www.bilibili.com/opus/971605792310427653" }
-    ]
-  },
-  "links": [
-    { "label": "哔哩哔哩：【MIKU】世界第一公主殿下 ...", "url": "http://www.bilibili.com/read/cv11995807" }
+  "ok": false,
+  "message": "未识别出明确角色，仅有低置信候选（如 園田萌舞風）",
+  "image_kind": "path",
+  "image_sha256": "c0ffee1234567890",
+  "guesses": [
+    {
+      "name": "園田萌舞風",
+      "work": "てさぐれ！部活もの すぴんおふ プルプルんシャルムと遊ぼう",
+      "confidence": "low",
+      "engine": "animetrace",
+      "box": [0.17, 0.068, 0.352, 0.296]
+    }
   ],
-  "engines": ["baidu"],
-  "notes": ["AnimeTrace 给出的候选置信度偏低", "trace.moe 没有匹配到番剧"]
+  "engines": ["animetrace", "tracemoe"],
+  "notes": [
+    "AnimeTrace 给出的候选置信度偏低",
+    "trace.moe 今日额度 7/100",
+    "trace.moe 最高相似度仅 0.561，未作为结论"
+  ]
 }
 ```
 
@@ -180,8 +181,7 @@ image_search({ image: 'a.png', engine: 'baidu' })
 | `guesses[]` | array | 角色候选：`name` 角色名、`work` 作品名、`confidence` `high`/`low`、`engine`、`box` 归一化位置框 |
 | `anime` | object | 番剧/作品：trace.moe 会给 `episode`/`at`/`similarity`；只有 AniList 解析时是作品页 |
 | `lens` | object | `knowledge_title`/`knowledge_description` 识别结论、`text` 图中文字、`visual_matches[]`/`exact_matches[]` 来源页、`organic[]` 相关网页 |
-| `baidu` | object | 兜底：`guess` 推测主体、`text` 页面摘要、`sources[]` 图片来源页 |
-| `links[]` | array | 汇总后的出处页（AniList + Lens/百度的来源页，已去重） |
+| `links[]` | array | 汇总后的出处页（AniList + Lens 的来源页，已去重） |
 | `engines` | array | 本次实际跑过的引擎（按固定顺序，与完成先后无关） |
 | `notes[]` | array | 额度、超时、降级、压缩等说明——**失败原因都写在这里**，不会编造结论 |
 
@@ -202,6 +202,8 @@ export SERPAPI_KEY="你的key"
 
 仓库里的 [`cordis.patch.yml`](./cordis.patch.yml) 只包含占位符，不含任何密钥。
 
+插件声明的 `Config` schema 会用默认值补全缺省项，并在加载时拒绝类型错误的值（比如把 `timeoutMs` 写成字符串）。
+
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `serpapiKey` | `''` | Google Lens 的 Key；留空则跳过 Lens（可用环境变量 `SERPAPI_KEY`） |
@@ -211,33 +213,27 @@ export SERPAPI_KEY="你的key"
 | `animetraceToken` | `''` | AnimeTrace token（可用 `ANIMETRACE_TOKEN`） |
 | `enableAnimeTrace` | `true` | 关掉可省额度 |
 | `enableTraceMoe` | `true` | trace.moe 开关 |
-| `enableBaiduFallback` | `true` | 百度兜底开关（需要 `dsh-builtin-browser`） |
 | `maxImageBytes` | `8388608` | 图片大小上限 |
-| `maxBaiduBytes` | `4194304` | 超过这个大小的图不走浏览器上传 |
 | `cacheTtlHours` | `24` | 同一张图的结果缓存时长 |
 | `timeoutMs` | `60000` | 单次调用总超时 |
 | `engineTimeoutMs` | `12000` | 单引擎超时 |
 
 ### 关于 sharp
 
-压缩依赖 [sharp](https://github.com/lovell/sharp)。插件**不强制安装**：优先按常规依赖解析，其次在 DSH profile 的 pnpm 仓库里查找；都找不到就不压缩，并在 `notes` 里说明原因。想让大图也能走 Lens，可以在 profile 里装 sharp。
+压缩依赖 [sharp](https://github.com/lovell/sharp)，已声明为 `optionalDependencies`：正常安装会一起装上；如果安装被跳过或失败，插件会退回在 DSH profile 的 pnpm 仓库里查找，再找不到就不压缩，并在 `notes` 里说明原因。
 
 ## 行为与限制
 
 **行为**
 
 - **缓存**：按图片内容 sha256 缓存 24 小时，同一张图重复问不再消耗额度。
-- **并行**：免费引擎同时跑；只有都没结论时才动用 Lens/百度，省额度也省时间。
-- **百度兜底**：通过共享浏览器操作识图页（URL 粘贴或本地文件注入），页面会出现在浏览器窗口里，遇到验证码可由人接手。
+- **并行**：免费引擎同时跑；只有都没结论时才动用 Lens，省额度也省时间。
 - **失败透明**：引擎报错、限流、超时、压缩都会写进 `notes[]`，不会编造结论。
 
 **已知限制**（别期待它做不到的事）
 
 - **梗图、真人、实拍、冷门画师**：免费三件套基本无能为力，需要 Lens（或代理直连 SauceNAO/ascii2d）。
 - **AniList 只覆盖日本动画**：真人影视、游戏、国漫的出处页拿不到。
-- **AnimeTrace 有训练分布**：主流日系角色很准，画风不符时会给低置信候选——此时工具会明确说"未识别"。
-- **百度那段是浏览器自动化**：依赖 `dsh-builtin-browser`，速度较慢（10–20 秒），且属于灰色地带，请控制频率。
-- **额度是硬上限**：trace.moe 100 次/天、SerpApi 250 次/月，用尽后只能等下个周期或换 Key。
 
 ## 排查
 
@@ -248,7 +244,6 @@ export SERPAPI_KEY="你的key"
 | `429` / `请求过于频繁` | 额度用尽或触发限流；Lens 等下月，AnimeTrace 可注册免费 token |
 | Lens 没出现在结果里 | `lensPolicy: auto` 时，免费引擎已高置信就跳过；要强制就传 `engine: "lens"` |
 | `图片 XXXKB，上传上限约 500KB` | 本机没找到 sharp，装一下或先手动压缩 |
-| `百度兜底不可用：未检测到浏览器服务` | profile 里没有 `dsh-builtin-browser`，或浏览器没启动 |
 | 结果全是低置信候选 | 正常行为——这类图免费引擎确实认不出，加 Lens 或换清晰整图 |
 
 ## 开发

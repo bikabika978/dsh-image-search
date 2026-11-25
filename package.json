@@ -2,7 +2,7 @@
   "name": "dsh-image-search",
   "version": "0.1.0",
   "type": "module",
-  "description": "以图搜图：反查二次元角色、番剧出处与图片来源页（Google Lens + AnimeTrace + trace.moe + 百度识图兜底）",
+  "description": "以图搜图：反查二次元角色、番剧出处与图片来源页（Google Lens + AnimeTrace + trace.moe）",
   "license": "MIT",
   "author": "dsh-image-search contributors",
   "keywords": [
@@ -16,6 +16,9 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.35.0"
   },
   "exports": {
     ".": "./index.js",

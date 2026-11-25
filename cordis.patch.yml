@@ -19,10 +19,8 @@
         # 三个免费引擎开关
         enableAnimeTrace: true
         enableTraceMoe: true
-        enableBaiduFallback: true
         # 图片大小上限（字节）、缓存时长（小时）
         maxImageBytes: 8388608
-        maxBaiduBytes: 4194304
         cacheTtlHours: 24
         # 上传前压缩：本地图片超过这个字节数，先用 sharp 压到上限内再传 Lens
         serpapiUploadMaxBytes: 500000

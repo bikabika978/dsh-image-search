@@ -22,7 +22,6 @@
 - `api.animetrace.com`（角色识别）
 - `api.trace.moe`（番剧识别）
 - `serpapi.com`（Google Lens 代理）
-- 百度识图（通过本机浏览器，仅在启用兜底时）
 - `graphql.anilist.co`（出处页查询，只发标题文本，不发图片）
 
 涉密、内部或隐私图片请不要使用云端链路。
