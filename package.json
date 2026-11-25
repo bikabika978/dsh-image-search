@@ -32,6 +32,7 @@
     "locale/*.json",
     "icon.svg",
     "schema/output.json",
+    "docs/*.md",
     "README.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
