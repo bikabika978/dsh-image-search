@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "image_search output",
+  "description": "dsh-image-search 工具的成功返回值结构（失败时抛错，不返回该结构）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "message"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "description": "是否得到可用结论。"
+    },
+    "message": {
+      "type": "string",
+      "description": "一句话结论。"
+    },
+    "image_kind": {
+      "type": "string",
+      "enum": [
+        "url",
+        "path"
+      ]
+    },
+    "image_sha256": {
+      "type": "string"
+    },
+    "cached": {
+      "type": "boolean"
+    },
+    "guesses": {
+      "type": "array",
+      "description": "角色候选（AnimeTrace）。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "work": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "low"
+            ]
+          },
+          "engine": {
+            "type": "string"
+          },
+          "box": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "anime": {
+      "type": "object",
+      "description": "番剧匹配（trace.moe），或经 AniList 解析出的作品页。",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "episode": {
+          "type": "integer"
+        },
+        "at": {
+          "type": "string"
+        },
+        "similarity": {
+          "type": "number"
+        },
+        "anilist_url": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        }
+      }
+    },
+    "lens": {
+      "type": "object",
+      "description": "Google Lens 结果：识别结论、图中文字、视觉匹配与精确匹配。",
+      "additionalProperties": false,
+      "properties": {
+        "knowledge_title": {
+          "type": "string"
+        },
+        "knowledge_description": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "visual_matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "link": {
+                "type": "string"
+              },
+              "thumbnail": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "exact_matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "link": {
+                "type": "string"
+              },
+              "thumbnail": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "organic": {
+          "type": "array",
+          "description": "Lens 关联的网页结果（标题/链接/摘要）。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "link": {
+                "type": "string"
+              },
+              "snippet": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "description": "出处页链接。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "url"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "engines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

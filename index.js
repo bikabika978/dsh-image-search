@@ -75,7 +75,7 @@ const PARAMETERS = {
   required: ['image'],
 }
 
-const OUTPUT_SCHEMA = {
+export const OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   required: ['ok', 'message'],
