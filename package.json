@@ -4,7 +4,7 @@
   "type": "module",
   "description": "以图搜图：反查二次元角色、番剧出处与图片来源页（Google Lens + AnimeTrace + trace.moe）",
   "license": "MIT",
-  "author": "dsh-image-search contributors",
+  "author": "比卡比卡丘",
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",

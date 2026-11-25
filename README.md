@@ -193,6 +193,6 @@ node dev/smoke-test.mjs "D:/素材/某张动漫角色图.jpg"
 
 ## 许可证
 
-[MIT](./LICENSE) © 2026 dsh-image-search contributors
+[MIT](./LICENSE) © 2026 比卡比卡丘
 
 本项目仅调用上述第三方服务的公开接口；各服务受其自身服务条款约束，使用者需自备 Key，作者不对识别结果与第三方服务的可用性提供担保。
