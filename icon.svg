@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="以图搜图">
+  <defs>
+    <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5aa9ff"/>
+      <stop offset="100%" stop-color="#2f6fe0"/>
+    </linearGradient>
+  </defs>
+  <!-- 放大镜镜片 -->
+  <circle cx="27" cy="27" r="17" fill="#ffffff" stroke="url(#lens)" stroke-width="5"/>
+  <!-- 镜内角色剪影：头 + 肩 -->
+  <circle cx="27" cy="22" r="6.2" fill="#2f6fe0" opacity="0.88"/>
+  <path d="M16.5 38c1.6-6 5.6-9 10.5-9s8.9 3 10.5 9z" fill="#2f6fe0" opacity="0.88"/>
+  <!-- 镜柄 -->
+  <rect x="38.4" y="40.2" width="16.5" height="6.2" rx="3.1" fill="#2f6fe0" transform="rotate(45 38.4 40.2)"/>
+  <!-- 高光 -->
+  <path d="M29.5 13.3a11.5 11.5 0 0 0-9.4 5.2" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity="0.9"/>
+  <!-- 识别星火 -->
+  <path d="M50 12l1.8 4.2L56 18l-4.2 1.8L50 24l-1.8-4.2L44 18l4.2-1.8z" fill="#ffc247"/>
+  <path d="M14 50l1.2 2.8L18 54l-2.8 1.2L14 58l-1.2-2.8L10 54l2.8-1.2z" fill="#ffc247" opacity="0.8"/>
+</svg>

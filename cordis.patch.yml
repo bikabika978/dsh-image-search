@@ -1,0 +1,32 @@
+# dsh-image-search — 以图搜图插件
+#
+# 这是开源仓库里提交的默认配置：不含任何密钥。
+# 本地使用时，把你的 Key 放在 profile 的 cordis.patch.yml 覆盖里，
+# 或者设置环境变量 SERPAPI_KEY / ANIMETRACE_TOKEN（推荐，插件会自动读取）。
+#
+# 安装：plugin_manager action=install_bundle target=<本目录绝对路径>
+- insert:
+    - id: image-search
+      name: dsh-image-search
+      config:
+        # Google Lens（SerpApi）。免费注册 serpapi.com 可得 250 次/月；留空则跳过 Lens。
+        # 也可以不写这里，改用环境变量 SERPAPI_KEY。
+        serpapiKey: ''
+        # auto = 免费引擎认不出时才用 Lens（省额度）；always = 每次都先用 Lens（更准，费额度）
+        lensPolicy: auto
+        # AnimeTrace 免费 token（去 animetrace.com 注册可放宽限额）；也可用环境变量 ANIMETRACE_TOKEN。
+        animetraceToken: ''
+        # 三个免费引擎开关
+        enableAnimeTrace: true
+        enableTraceMoe: true
+        enableBaiduFallback: true
+        # 图片大小上限（字节）、缓存时长（小时）
+        maxImageBytes: 8388608
+        maxBaiduBytes: 4194304
+        cacheTtlHours: 24
+        # 上传前压缩：本地图片超过这个字节数，先用 sharp 压到上限内再传 Lens
+        serpapiUploadMaxBytes: 500000
+        compressMaxDimension: 1600
+        # 单次调用总超时、单引擎超时（毫秒）
+        timeoutMs: 60000
+        engineTimeoutMs: 12000

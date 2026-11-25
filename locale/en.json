@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Image Lookup",
+    "description": "Reverse image search: identify anime characters, find which episode a frame comes from, and collect source pages. AnimeTrace + trace.moe, with Baidu image search as the fallback."
+  }
+}

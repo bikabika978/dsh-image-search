@@ -1,0 +1,39 @@
+{
+  "name": "dsh-image-search",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "以图搜图：反查二次元角色、番剧出处与图片来源页（Google Lens + AnimeTrace + trace.moe + 百度识图兜底）",
+  "license": "MIT",
+  "author": "dsh-image-search contributors",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "reverse-image-search",
+    "image-search",
+    "google-lens",
+    "anime",
+    "vtuber"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

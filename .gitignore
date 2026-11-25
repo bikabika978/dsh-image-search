@@ -1,0 +1,28 @@
+# 依赖与构建产物
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+# 本地密钥：绝不提交
+.env
+.env.*
+*.key
+*.pem
+SERPAPI_KEY*
+
+# 带密钥的本地配置覆盖（示例配置 cordis.patch.example.yml 才是提交的版本）
+cordis.patch.local.yml
+
+# 测试样例图片（版权原因不入库，本地自测时自行放图）
+dev/samples/*.jpg
+dev/samples/*.jpeg
+dev/samples/*.png
+dev/samples/*.webp
+dev/samples/*.gif
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
