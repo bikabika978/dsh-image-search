@@ -77,6 +77,100 @@ image_search({ image: 'a.png', engine: 'baidu' })
 
 返回：`guesses[]`（角色候选）、`anime`（番剧/作品页）、`lens`（Lens 识别与来源页）、`baidu`（兜底结果）、`links[]`（出处页）、`notes[]`（额度/失败原因）。
 
+## 返回结构
+
+下面是字段示意（取自真实运行、已裁剪合并；未触发的引擎字段会直接省略，不是空对象）。
+
+命中角色 + Lens 时：
+
+```json
+{
+  "ok": true,
+  "message": "可能是 レム（Re:ゼロから始める異世界生活）；作品 Re:Zero kara Hajimeru Isekai Seikatsu",
+  "image_kind": "path",
+  "image_sha256": "5eaeb2340a770998",
+  "guesses": [
+    {
+      "name": "レム",
+      "work": "Re:ゼロから始める異世界生活",
+      "confidence": "high",
+      "engine": "animetrace",
+      "box": [0.366, 0.15, 0.742, 0.428]
+    }
+  ],
+  "anime": {
+    "title": "Re:Zero kara Hajimeru Isekai Seikatsu",
+    "anilist_url": "https://anilist.co/anime/21355",
+    "engine": "anilist"
+  },
+  "lens": {
+    "knowledge_title": "",
+    "visual_matches": [
+      {
+        "title": "rem (re:zero kara hajimeru isekai seikatsu) drawn by ssosso",
+        "source": "Danbooru",
+        "link": "https://danbooru.donmai.us/posts/12525208",
+        "thumbnail": "https://cdn.donmai.us/...jpg"
+      },
+      {
+        "title": "Rem (Re:Zero) - Re:Zero Kara Hajimeru Isekai Seikatsu",
+        "source": "Zerochan",
+        "link": "https://www.zerochan.net/2770624",
+        "thumbnail": "https://static.zerochan.net/...jpg"
+      }
+    ],
+    "exact_matches": [],
+    "organic": []
+  },
+  "links": [
+    { "label": "AniList 角色：Rem", "url": "https://anilist.co/character/88575" },
+    { "label": "AniList 作品：Re:Zero kara Hajimeru Isekai Seikatsu", "url": "https://anilist.co/anime/21355" },
+    { "label": "Danbooru：rem (re:zero ...) drawn by ssosso", "url": "https://danbooru.donmai.us/posts/12525208" }
+  ],
+  "engines": ["animetrace", "lens"],
+  "notes": ["已压缩后上传 Lens：884KB → 161KB（1200x1567, q82）"]
+}
+```
+
+前三层都没结论、走百度兜底时（只列出该场景相关的字段）：
+
+```json
+{
+  "ok": true,
+  "message": "百度识图认为图中可能是 初音未来",
+  "image_kind": "url",
+  "image_sha256": "85b170d3a2c40e19",
+  "baidu": {
+    "guess": "初音未来",
+    "text": "图中可能是初音未来 相关商品 ... 图片来源 ...",
+    "sources": [
+      { "title": "【MIKU】世界第一公主殿下 初音未来特辑（4） - 哔哩哔哩", "url": "http://www.bilibili.com/read/cv11995807" },
+      { "title": "布洛妮娅゜扎伊切克的动态 - 哔哩哔哩", "url": "http://www.bilibili.com/opus/971605792310427653" }
+    ]
+  },
+  "links": [
+    { "label": "哔哩哔哩：【MIKU】世界第一公主殿下 ...", "url": "http://www.bilibili.com/read/cv11995807" }
+  ],
+  "engines": ["baidu"],
+  "notes": ["AnimeTrace 给出的候选置信度偏低", "trace.moe 没有匹配到番剧"]
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `ok` | boolean | 是否得到可用结论。**只有低置信候选时是 `false`**，候选仍会返回 |
+| `message` | string | 一句话结论，可直接展示给用户 |
+| `image_kind` / `image_sha256` | string | 输入是 `path` 还是 `url`；内容哈希（缓存键，仅取前 16 位） |
+| `guesses[]` | array | 角色候选：`name` 角色名、`work` 作品名、`confidence` `high`/`low`、`engine`、`box` 归一化位置框 |
+| `anime` | object | 番剧/作品：trace.moe 会给 `episode`/`at`/`similarity`；只有 AniList 解析时是作品页 |
+| `lens` | object | `knowledge_title`/`knowledge_description` 识别结论、`text` 图中文字、`visual_matches[]`/`exact_matches[]` 来源页、`organic[]` 相关网页 |
+| `baidu` | object | 兜底：`guess` 推测主体、`text` 页面摘要、`sources[]` 图片来源页 |
+| `links[]` | array | 汇总后的出处页（AniList + Lens/百度的来源页，已去重） |
+| `engines` | array | 本次实际跑过的引擎（按固定顺序，与完成先后无关） |
+| `notes[]` | array | 额度、超时、降级、压缩等说明——**失败原因都写在这里**，不会编造结论 |
+
 ## 行为说明
 
 - **缓存**：按图片内容 sha256 缓存，同一张图重复问不再消耗额度。
@@ -87,15 +181,23 @@ image_search({ image: 'a.png', engine: 'baidu' })
 
 ## 开发
 
-```bash
-# 离线冒烟测试（不需要 Key，走免费引擎）
-node dev/smoke-test.mjs <图片路径>
+仓库自带两张 CC0 测试图（`dev/assets/`，由项目用 sharp 从内联 SVG 生成，无任何第三方素材），所以**不传参数就能跑**：
 
-# Lens 冒烟测试（消耗 1 次 SerpApi 额度）
-node dev/smoke-test-lens.mjs <图片路径>
+```bash
+# 离线冒烟测试（不需要 Key，走免费引擎）——验证链路是否跑通
+node dev/smoke-test.mjs
+
+# Lens 冒烟测试（消耗 1 次 SerpApi 额度）——验证 Key 和上传链路
+node dev/smoke-test-lens.mjs
 ```
 
-`dev/samples/` 里不放任何图片素材（版权原因），自测时自己指定路径。
+默认图是抽象几何图形，**任何引擎都认不出内容**——验证的是「链路通、结构对」，不是「认得准」。想看识别效果就传自己的图：
+
+```bash
+node dev/smoke-test.mjs "D:/素材/某张动漫角色图.jpg"
+```
+
+`dev/samples/` 留给本地图片（不会提交），`dev/assets/` 是仓库自带素材。
 
 ## 致谢
 

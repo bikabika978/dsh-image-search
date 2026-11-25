@@ -11,10 +11,10 @@ const cfgText = readFileSync(path.join(pkgDir, 'cordis.patch.yml'), 'utf8')
 const key = /serpapiKey:\s*'([0-9a-f]+)'/.exec(cfgText)?.[1]
 if (!key) throw new Error('cordis.patch.yml 里没有读到 serpapiKey')
 
-const image = process.argv[2]
-if (!image) {
-  console.error('用法：node dsh-image-search/dev/smoke-test-lens.mjs <图片路径>（会消耗 1 次 SerpApi 额度）')
-  process.exit(1)
+const image = process.argv[2] || path.join(here, 'assets', 'cc0-shapes-640x480.png')
+if (!process.argv[2]) {
+  console.error('提示：未指定图片，使用 CC0 测试图。它会消耗 1 次额度，但只会得到无意义匹配；')
+  console.error('      想验证识别效果请传一张真实图片：node dev/smoke-test-lens.mjs <图片路径>')
 }
 
 const reg = []

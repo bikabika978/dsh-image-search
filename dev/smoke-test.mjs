@@ -1,5 +1,8 @@
 // 离线冒烟测试：用假 ctx 加载插件，直接调用 image_search 工具。
-// 用法：node dsh-image-search/dev/smoke-test.mjs <图片路径>
+// 用法：node dsh-image-search/dev/smoke-test.mjs [图片路径]
+// 不传路径时使用 dev/assets 里的 CC0 测试图（只验证链路，不会识别出内容）。
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { apply } from '../index.js'
 
 const registered = []
@@ -30,11 +33,7 @@ const tool = registered.find((t) => t.name === 'image_search')
 if (!tool) throw new Error('工具未注册')
 console.log('tool registered:', tool.name, '| params required:', JSON.stringify(tool.parameters.required))
 
-const image = process.argv[2]
-if (!image) {
-  console.error('用法：node dsh-image-search/dev/smoke-test.mjs <图片路径>')
-  process.exit(1)
-}
+const image = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'cc0-shapes-640x480.png')
 const value = await tool.execute({ image, intent: 'auto', engine: 'auto', max_results: 6 }, { signal: new AbortController().signal })
 console.log('\n=== value ===')
 console.log(JSON.stringify(value, null, 2))
