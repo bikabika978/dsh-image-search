@@ -210,20 +210,64 @@ image_search({ image: 'a.png', engine: 'lens' })
 
 ## 配置
 
-**推荐用环境变量**，这样密钥不会进任何文件：
+### 1. 拿 Key（只有 Lens 需要）
 
-```bash
-# Windows（PowerShell，设置后重启 DSH）
+| Key | 必需吗 | 去哪拿 | 免费额度 |
+|---|---|---|---|
+| `SERPAPI_KEY` | 否，但没有就没有 Lens | [注册](https://serpapi.com/users/sign_up) → [管理页复制](https://serpapi.com/manage-api-key) | 250 次/月 |
+| `ANIMETRACE_TOKEN` | 否 | [animetrace.com](https://www.animetrace.com) | 匿名有限，配 token 可放宽 |
+
+SerpApi 注册只需要邮箱，**不需要信用卡**，也不会自动扣费。额度用完只是当月停用，不会产生账单喵。
+
+### 2. 填进去（三选一）
+
+| 方式 | 适合 | 生效条件 |
+|---|---|---|
+| **环境变量**（推荐） | 不想让 Key 进任何文件 | **重启 DSH** |
+| profile 覆盖 | 想和其它配置放一起 | 重启 DSH（或等热重载） |
+| 设置界面 | 图形化填表 | 保存后生效（能看到这个插件的设置项时） |
+
+**环境变量**
+
+```powershell
+# Windows（PowerShell）
 setx SERPAPI_KEY "你的key"
 setx ANIMETRACE_TOKEN "你的token"   # 可选
-
-# macOS / Linux
-export SERPAPI_KEY="你的key"
 ```
 
-也可以在 profile 的 `cordis.patch.yml` 里覆盖（**注意：覆盖会替换整个 config，必须写全所有键**）。
+```bash
+# macOS / Linux
+export SERPAPI_KEY="你的key"
+export ANIMETRACE_TOKEN="你的token"   # 可选
+```
 
-仓库里的 [`cordis.patch.yml`](./cordis.patch.yml) 只包含占位符，不含任何密钥。
+> ⚠️ `setx` / `export` 只影响**之后启动**的进程。DSH 已经在跑的话，必须**完全退出再打开**才能读到；从旧终端里启动的 DSH 也可能拿不到，建议用桌面图标启动。
+
+**profile 覆盖**（在 `~/.dsh/profiles/<你的 profile>/cordis.patch.yml` 里追加）
+
+```yaml
+- id: image-search
+  name: dsh-image-search
+  config:
+    serpapiKey: '你的key'
+    # 注意：覆盖会替换整个 config，建议把下面「可选配置项」里的键一起抄全
+```
+
+### 3. 确认生效
+
+- 让 AI 跑一次 `image_search`，看返回的 `engines` 里有没有 `lens`（或 `notes` 里有没有 `lens 失败：...`）
+- 或者故意把 Key 改错一位：能报 `401 Invalid API key` 就说明**读到了**，改回来即可
+
+### 4. 配了却没生效？
+
+| 症状 | 原因 |
+|---|---|
+| 结果里完全没有 Lens | 没重启 DSH，或 Key 没被读到 |
+| `401 Invalid API key` | Key 复制错、带了空格或换行 |
+| `429` | 当月 250 次用完了，下月重置 |
+| 设置界面看不到这个插件 | 当前 DSH 版本可能还没投影这个 schema，改用环境变量 |
+
+### 可选配置项
 
 插件声明的 `Config` schema 会用默认值补全缺省项，并在加载时拒绝类型错误的值（比如把 `timeoutMs` 写成字符串）。
 
