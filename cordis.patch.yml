@@ -7,7 +7,7 @@
 # 安装：plugin_manager action=install_bundle target=<本目录绝对路径>
 - insert:
     - id: image-search
-      name: dsh-image-search
+      name: dsh-image-lens
       config:
         # Google Lens（SerpApi）。免费注册 serpapi.com 可得 250 次/月；留空则跳过 Lens。
         # 也可以不写这里，改用环境变量 SERPAPI_KEY。

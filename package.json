@@ -1,5 +1,5 @@
 {
-  "name": "dsh-image-search",
+  "name": "dsh-image-lens",
   "version": "0.1.0",
   "type": "module",
   "description": "以图搜图：反查二次元角色、番剧出处与图片来源页（Google Lens + AnimeTrace + trace.moe）",
@@ -42,5 +42,16 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bikabika978/dsh-image-search.git"
+  },
+  "homepage": "https://github.com/bikabika978/dsh-image-search#readme",
+  "bugs": {
+    "url": "https://github.com/bikabika978/dsh-image-search/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

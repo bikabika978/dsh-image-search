@@ -1,5 +1,6 @@
 # dsh-image-search · 以图搜图
 
+[![npm](https://img.shields.io/npm/v/dsh-image-lens.svg)](https://www.npmjs.com/package/dsh-image-lens)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 
@@ -8,6 +9,7 @@
 一张图丢进去，它告诉你：**这是谁、出自哪部作品哪一集、原图从哪儿来**。
 
 - 工具名：`image_search`
+- npm 包名：**`dsh-image-lens`**（`dsh-image-search` 已被其他插件占用）
 - 适用：[DeepSeek Harness (DSH)](https://github.com/deepseek-ai) 插件体系
 - 零 Key 也能用：AnimeTrace + trace.moe 免费打底
 - 许可证：MIT
@@ -26,8 +28,16 @@
 
 **1. 装进 DSH profile**
 
+从 GitHub 目录安装：
+
 ```
 plugin_manager action=install_bundle target=<本目录绝对路径>
+```
+
+或者从 npm 安装：
+
+```bash
+dsh plugin add dsh-image-lens
 ```
 
 **2.（可选，但推荐）配 Google Lens Key**，免费 250 次/月：
